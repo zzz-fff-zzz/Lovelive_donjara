@@ -529,6 +529,34 @@ button:disabled {
         font-size: 16px;
         padding: 15px 25px;
     }
+    
+    /* 美化手机滚动条 */
+    [style*="overflowY: auto"],
+    [style*="overflow-y: auto"] {
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    [style*="overflowY: auto"]::-webkit-scrollbar,
+    [style*="overflow-y: auto"]::-webkit-scrollbar {
+        width: 4px;
+    }
+    
+    [style*="overflowY: auto"]::-webkit-scrollbar-track,
+    [style*="overflow-y: auto"]::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 2px;
+    }
+    
+    [style*="overflowY: auto"]::-webkit-scrollbar-thumb,
+    [style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+        background: rgba(76, 175, 80, 0.4);
+        border-radius: 2px;
+    }
+    
+    [style*="overflowY: auto"]::-webkit-scrollbar-thumb:hover,
+    [style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
+        background: rgba(76, 175, 80, 0.6);
+    }
 }
 
 @media (max-width: 480px) {

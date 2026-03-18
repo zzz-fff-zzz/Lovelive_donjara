@@ -1190,6 +1190,7 @@ function renderGame() {
                     infoArea.style.alignItems = 'center';
                     infoArea.style.gap = '4px';
                     infoArea.style.marginBottom = '4px';
+                    infoArea.style.flexShrink = '0';
                     
                     // 头像
                     const avatarImg = document.createElement('img');
@@ -1288,6 +1289,9 @@ function renderGame() {
                         chiArea.style.border = '1px dashed #4CAF50';
                         chiArea.style.borderRadius = '4px';
                         chiArea.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+                        chiArea.style.maxHeight = '80px';
+                        chiArea.style.overflowY = 'auto';
+                        chiArea.style.flexShrink = '0';
                         
                         const chiTitle = document.createElement('div');
                         chiTitle.style.fontSize = '8px';
