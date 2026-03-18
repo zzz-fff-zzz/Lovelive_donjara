@@ -1053,6 +1053,94 @@ function renderGame() {
                     hand.appendChild(tileWrapper);
                 });
             }
+            
+            // 显示玩家的吃牌区（在手机端放在手牌下方）
+            if (game.isMobile && game.playerChiTiles[player.id].length > 0) {
+                const chiArea = document.createElement('div');
+                chiArea.style.marginTop = '10px';
+                chiArea.style.padding = '8px';
+                chiArea.style.border = '2px dashed #4CAF50';
+                chiArea.style.borderRadius = '6px';
+                chiArea.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+                chiArea.style.clear = 'both';
+                
+                const chiTitle = document.createElement('h4');
+                chiTitle.textContent = '吃牌区';
+                chiTitle.style.margin = '0 0 8px 0';
+                chiTitle.style.fontSize = '12px';
+                chiTitle.style.color = '#4CAF50';
+                chiArea.appendChild(chiTitle);
+                
+                const chiTilesContainer = document.createElement('div');
+                chiTilesContainer.style.display = 'flex';
+                chiTilesContainer.style.flexDirection = 'column';
+                chiTilesContainer.style.gap = '8px';
+                
+                game.playerChiTiles[player.id].forEach((chiGroup) => {
+                    const groupDiv = document.createElement('div');
+                    groupDiv.style.display = 'flex';
+                    groupDiv.style.gap = '5px';
+                    groupDiv.style.padding = '5px';
+                    groupDiv.style.border = '1px solid #4CAF50';
+                    groupDiv.style.borderRadius = '4px';
+                    groupDiv.style.backgroundColor = 'white';
+                    
+                    chiGroup.forEach(tile => {
+                        const tileWrapper = document.createElement('div');
+                        tileWrapper.className = 'tile-wrapper';
+                        
+                        const tileElement = document.createElement('div');
+                        tileElement.className = 'tile-small';
+                        tileElement.style.backgroundColor = getSeriesColor(tile.series);
+                        
+                        if (tile.type === 'wildcard') {
+                            tileElement.style.border = '2px dashed #FFD700';
+                        }
+                        
+                        const img = document.createElement('img');
+                        img.src = tile.imageUrl;
+                        img.alt = tile.name;
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'cover';
+                        
+                        img.onerror = function() {
+                            tileElement.removeChild(img);
+                            tileElement.textContent = tile.name;
+                            tileElement.style.display = 'flex';
+                            tileElement.style.justifyContent = 'center';
+                            tileElement.style.alignItems = 'center';
+                            tileElement.style.fontSize = '8px';
+                            tileElement.style.textAlign = 'center';
+                            tileElement.style.padding = '1px';
+                        };
+                        
+                        tileElement.appendChild(img);
+                        tileWrapper.appendChild(tileElement);
+                        
+                        // 如果需要显示角色信息
+                        if (game.showCharacterInfo) {
+                            const infoDiv = document.createElement('div');
+                            infoDiv.className = 'character-info';
+                            infoDiv.style.fontSize = '10px';
+                            infoDiv.innerHTML = `
+                                <div><strong>系列:</strong> ${tile.series}</div>
+                                <div><strong>小组:</strong> ${tile.group || '无'}</div>
+                                <div><strong>学年:</strong> ${tile.grade || '无'}</div>
+                                <div><strong>生日:</strong> ${tile.birthdayMonth ? tile.birthdayMonth + '月' : '无'}</div>
+                            `;
+                            tileWrapper.appendChild(infoDiv);
+                        }
+                        
+                        groupDiv.appendChild(tileWrapper);
+                    });
+                    
+                    chiTilesContainer.appendChild(groupDiv);
+                });
+                
+                chiArea.appendChild(chiTilesContainer);
+                area.appendChild(chiArea);
+            }
         } else {
             // 中心区域显示弃牌堆 - 移动端和桌面端不同布局
             if (game.isMobile) {
@@ -1149,6 +1237,7 @@ function renderGame() {
                     discardContainer.style.justifyContent = 'center';
                     discardContainer.style.alignContent = 'flex-start';
                     discardContainer.style.gap = '3px';
+                    discardContainer.style.minHeight = '0';
                     
                     const aiDiscards = game.playerDiscardedTiles[aiPlayer.id];
                     aiDiscards.forEach((tile) => {
@@ -1189,6 +1278,75 @@ function renderGame() {
                     });
                     
                     aiArea.appendChild(discardContainer);
+                    
+                    // 显示吃牌区
+                    if (game.playerChiTiles[aiPlayer.id].length > 0) {
+                        const chiArea = document.createElement('div');
+                        chiArea.style.marginTop = '4px';
+                        chiArea.style.padding = '4px';
+                        chiArea.style.border = '1px dashed #4CAF50';
+                        chiArea.style.borderRadius = '4px';
+                        chiArea.style.backgroundColor = 'rgba(76, 175, 80, 0.1)';
+                        
+                        const chiTitle = document.createElement('div');
+                        chiTitle.style.fontSize = '8px';
+                        chiTitle.style.color = '#4CAF50';
+                        chiTitle.style.marginBottom = '3px';
+                        chiTitle.textContent = '吃牌区';
+                        chiArea.appendChild(chiTitle);
+                        
+                        const chiTilesContainer = document.createElement('div');
+                        chiTilesContainer.style.display = 'flex';
+                        chiTilesContainer.style.flexWrap = 'wrap';
+                        chiTilesContainer.style.gap = '3px';
+                        
+                        game.playerChiTiles[aiPlayer.id].forEach((chiGroup) => {
+                            const groupDiv = document.createElement('div');
+                            groupDiv.style.display = 'flex';
+                            groupDiv.style.gap = '2px';
+                            groupDiv.style.padding = '2px';
+                            groupDiv.style.border = '1px solid #4CAF50';
+                            groupDiv.style.borderRadius = '3px';
+                            groupDiv.style.backgroundColor = 'white';
+                            
+                            chiGroup.forEach(tile => {
+                                const tileElement = document.createElement('div');
+                                tileElement.className = 'tile-small';
+                                tileElement.style.width = '20px';
+                                tileElement.style.height = '27px';
+                                tileElement.style.backgroundColor = getSeriesColor(tile.series);
+                                
+                                if (tile.type === 'wildcard') {
+                                    tileElement.style.border = '2px dashed #FFD700';
+                                }
+                                
+                                const img = document.createElement('img');
+                                img.src = tile.imageUrl;
+                                img.alt = tile.name;
+                                img.style.width = '100%';
+                                img.style.height = '100%';
+                                img.style.objectFit = 'cover';
+                                
+                                img.onerror = function() {
+                                    tileElement.removeChild(img);
+                                    tileElement.textContent = tile.name;
+                                    tileElement.style.display = 'flex';
+                                    tileElement.style.justifyContent = 'center';
+                                    tileElement.style.alignItems = 'center';
+                                    tileElement.style.fontSize = '6px';
+                                };
+                                
+                                tileElement.appendChild(img);
+                                groupDiv.appendChild(tileElement);
+                            });
+                            
+                            chiTilesContainer.appendChild(groupDiv);
+                        });
+                        
+                        chiArea.appendChild(chiTilesContainer);
+                        aiArea.appendChild(chiArea);
+                    }
+                    
                     aiDiscardArea.appendChild(aiArea);
                 });
                 
@@ -1207,13 +1365,6 @@ function renderGame() {
                     playerDiscardArea.style.border = '2px solid #FFD700';
                     playerDiscardArea.style.boxShadow = '0 0 8px rgba(255, 215, 0, 0.5)';
                 }
-                
-                const playerDiscardLabel = document.createElement('div');
-                playerDiscardLabel.style.fontSize = '10px';
-                playerDiscardLabel.style.fontWeight = 'bold';
-                playerDiscardLabel.style.marginBottom = '4px';
-                playerDiscardLabel.textContent = '玩家弃牌';
-                playerDiscardArea.appendChild(playerDiscardLabel);
                 
                 const playerDiscardedTiles = createDiscardedTilesElement(0);
                 playerDiscardArea.appendChild(playerDiscardedTiles);
