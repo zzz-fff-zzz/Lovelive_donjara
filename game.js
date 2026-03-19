@@ -1,5 +1,3 @@
-// 动漫Donjara游戏
-
 // 游戏状态
 const GameState = {
     IDLE: 'idle',
@@ -29,6 +27,7 @@ const game = {
     pendingNextPlayer: false, // 是否等待玩家决定后再下一个玩家
     lastDrawnTile: [null, null, null, null], // 每个玩家刚摸到的牌
     playerChiTiles: [[], [], [], []], // 每个玩家的吃牌区
+    chiCount: [0, 0, 0, 0], // 每个玩家的吃牌次数
     lastDiscardedTile: null, // 上一位玩家刚打出的牌（用于吃牌判断）
     lastDiscardingPlayerIndex: -1, // 上一位打出牌的玩家索引（用于吃牌判断）
     globalLastDiscardedTile: null, // 所有玩家中最后被打出的牌（用于显示红色边框）
@@ -62,6 +61,41 @@ const game = {
         "DOLLCHESTRA": ["村野沙耶香", "徒町小铃"],
         "Mira-Cra Park!": ["大泽瑠璃乃", "安养寺姬芽"],
         "Edel Note": ["塞拉斯·柳田·利林费尔德", "桂城泉"]
+    },
+    // 生日月份分数配置（每个生日月份对应的额外分数）
+    birthdayMonthScores: {
+        1: 60000,
+        2: 60000,
+        3: 120000,
+        4: 60000,
+        5: 120000,
+        6: 60000,
+        7: 120000,
+        8: 60000,
+        9: 60000,
+        10: 120000,
+        11: 120000,
+        12: 120000
+    },
+    // 小组分数配置（每个小组对应的额外分数）
+    groupScores: {
+        "Printemps": 120000,
+        "BiBi": 120000,
+        "Lily white": 120000,
+        "CYaRon!": 120000,
+        "Guilty Kiss": 120000,
+        "AZALEA": 120000,
+        "A・ZU・NA": 120000,
+        "DiverDiva": 90000,
+        "QU4RTZ": 150000,
+        "R3BIRTH": 120000,
+        "CatChu": 120000,
+        "KALEIDOSCORE": 120000,
+        "5yncri5e!": 180000,
+        "Cerise Bouquet": 90000,
+        "DOLLCHESTRA": 90000,
+        "Mira-Cra Park!": 90000,
+        "Edel Note": 90000
     },
     // 系列的排序顺序
     seriesOrder: ["μ's", "Aqours", "虹咲", "Liella!", "莲之空", "人生不易部!", "音乐剧"],
@@ -231,6 +265,7 @@ function initGame() {
     game.pendingNextPlayer = false; // 重置等待状态
     game.lastDrawnTile = [null, null, null, null]; // 重置刚摸到的牌
     game.playerChiTiles = [[], [], [], []]; // 重置吃牌区
+    game.chiCount = [0, 0, 0, 0]; // 重置吃牌次数
     game.lastDiscardedTile = null; // 重置上一位玩家打出的牌（用于吃牌判断）
     game.lastDiscardingPlayerIndex = -1; // 重置上一位打出牌的玩家索引（用于吃牌判断）
     game.globalLastDiscardedTile = null; // 重置所有玩家中最后被打出的牌（用于显示红色边框）
@@ -682,7 +717,7 @@ function renderGame() {
                         
                         const skipChiBtn = document.createElement('button');
                         skipChiBtn.id = 'skip-chi-btn';
-                        skipChiBtn.textContent = '不吃';
+                        skipChiBtn.textContent = '取消';
                         skipChiBtn.style.fontSize = '16px';
                         skipChiBtn.style.padding = '8px 20px';
                         skipChiBtn.addEventListener('click', skipChi);
@@ -731,7 +766,7 @@ function renderGame() {
                     
                     const declareRiichiBtn = document.createElement('button');
                     declareRiichiBtn.id = 'declare-riichi-btn';
-                    declareRiichiBtn.textContent = '宣告立直';
+                    declareRiichiBtn.textContent = '立直';
                     declareRiichiBtn.style.backgroundColor = '#FF5722';
                     declareRiichiBtn.style.fontSize = '16px';
                     declareRiichiBtn.style.padding = '8px 20px';
@@ -740,7 +775,7 @@ function renderGame() {
                     
                     const skipRiichiBtn = document.createElement('button');
                     skipRiichiBtn.id = 'skip-riichi-btn';
-                    skipRiichiBtn.textContent = '不宣告';
+                    skipRiichiBtn.textContent = '取消';
                     skipRiichiBtn.style.fontSize = '16px';
                     skipRiichiBtn.style.padding = '8px 20px';
                     skipRiichiBtn.addEventListener('click', skipRiichi);
@@ -770,7 +805,7 @@ function renderGame() {
                     
                     const skipHuBtn = document.createElement('button');
                     skipHuBtn.id = 'skip-hu-btn';
-                    skipHuBtn.textContent = '不胡';
+                    skipHuBtn.textContent = '取消';
                     skipHuBtn.style.fontSize = '16px';
                     skipHuBtn.style.padding = '8px 20px';
                     skipHuBtn.addEventListener('click', skipHu);
@@ -1221,8 +1256,8 @@ function renderGame() {
                     if (game.isRiichi[aiPlayer.id]) {
                         infoText += ' 立直';
                     }
-                    if (game.playerChiTiles[aiPlayer.id].length > 0) {
-                        infoText += ` 吃${game.playerChiTiles[aiPlayer.id].length}`;
+                    if (game.chiCount[aiPlayer.id] > 0) {
+                        infoText += ` 吃${game.chiCount[aiPlayer.id]}`;
                     }
                     countDiv.textContent = infoText;
                     nameInfoArea.appendChild(countDiv);
@@ -1752,10 +1787,11 @@ function nextPlayer() {
     // 计算上家的玩家索引
     const previousPlayerIndex = (game.currentPlayerIndex - 1 + 4) % 4;
     
-    // 只有当上家刚打出牌，且玩家未立直时，才检查是否可以吃牌
+    // 只有当上家刚打出牌，且玩家未立直，且吃牌次数少于2次时，才检查是否可以吃牌
     if (!game.isRiichi[game.currentPlayerIndex] && 
         game.lastDiscardedTile && 
-        game.lastDiscardingPlayerIndex === previousPlayerIndex) {
+        game.lastDiscardingPlayerIndex === previousPlayerIndex &&
+        game.chiCount[game.currentPlayerIndex] < 2) {
         const chiResult = checkCanChi(currentPlayer.hand, game.lastDiscardedTile);
         if (chiResult.canChi) {
             game.canChi = true;
@@ -1767,8 +1803,8 @@ function nextPlayer() {
                 renderGame();
                 return;
             } else {
-                // AI玩家，50%概率吃牌
-                if (Math.random() < 0.5) {
+                // AI玩家，80%概率吃牌
+                if (Math.random() < 0.8) {
                     // 先渲染界面显示上家的弃牌
                     renderGame();
                     // AI选择前两张牌进行吃牌，先停顿1秒钟
@@ -1797,7 +1833,7 @@ function drawTileAndProceed(currentPlayer) {
     if (game.deck.length > 0) {
         const drawnTile = game.deck.pop();
         currentPlayer.hand.push(drawnTile);
-        game.lastDrawnTile[game.currentPlayerIndex] = drawnTile; // 记录刚摸到的牌
+        game.lastDrawnTile[game.currentPlayerIndex] = drawnTile;
         
         // 检查是否胜利（只有立直后才能胜利）
         if (game.isRiichi[game.currentPlayerIndex] && checkWin(currentPlayer.hand, game.currentPlayerIndex)) {
@@ -1809,6 +1845,10 @@ function drawTileAndProceed(currentPlayer) {
                 return;
             }
         }
+    } else {
+        // 牌库耗尽，游戏结束
+        endGameDeckExhausted();
+        return;
     }
     
     // 如果是AI玩家，自动进行游戏
@@ -1870,6 +1910,9 @@ function performChi(player, chiTiles, discardedTile) {
     const chiGroup = [...chiTiles, discardedTile];
     game.playerChiTiles[currentPlayerIndex].push(chiGroup);
     
+    // 增加吃牌次数
+    game.chiCount[currentPlayerIndex]++;
+    
     // 重置上一张打出的牌
     game.lastDiscardedTile = null;
     game.lastDiscardingPlayerIndex = -1;
@@ -1917,7 +1960,7 @@ function aiTurnAfterChi(player) {
     
     // 检查是否可以立直
     if (!game.isRiichi[player.id]) {
-        if (checkTenpai(player.hand, player.id) && Math.random() < 0.5) {
+        if (checkTenpai(player.hand, player.id) && Math.random() < 0.8) {
             game.isRiichi[player.id] = true;
             game.riichiTileIndex[player.id] = game.playerDiscardedTiles[player.id].length - 1;
         }
@@ -2026,8 +2069,8 @@ function aiTurn(player) {
             game.discardedTiles.push(discardedTile);
             game.playerDiscardedTiles[player.id].push(discardedTile);
             
-            // 检查是否听牌，如果听牌则自动立直（50%概率）
-            if (checkTenpai(player.hand, player.id) && Math.random() < 0.5) {
+            // 检查是否听牌，如果听牌则自动立直（80%概率）
+            if (checkTenpai(player.hand, player.id) && Math.random() < 0.8) {
                 game.isRiichi[player.id] = true;
                 game.riichiTileIndex[player.id] = game.playerDiscardedTiles[player.id].length - 1;
             }
@@ -2097,11 +2140,12 @@ function calculateBirthdayBonus(tiles) {
     // 检查每个月份是否>=3
     for (const month in monthCount) {
         if (monthCount[month] >= 3) {
-            // 您可以在这里修改各生日月份的分数
+            // 从配置中获取该月份的分数，如果不存在则使用默认值60000
+            const score = game.birthdayMonthScores[parseInt(month)] || 60000;
             bonusItems.push({
                 type: 'birthday',
                 month: parseInt(month),
-                score: 60000
+                score: score
             });
         }
     }
@@ -2160,11 +2204,12 @@ function calculateGroupBonus(tiles) {
         }
         
         if (hasAllMembers) {
-            // 您可以在这里修改各小组的分数
+            // 从配置中获取该小组的分数，如果不存在则使用默认值60000
+            const score = game.groupScores[groupName] || 60000;
             bonusItems.push({
                 type: 'group',
                 groupName: groupName,
-                score: 60000
+                score: score
             });
         }
     }
@@ -2242,6 +2287,12 @@ function calculateWinTypeAndScore(player, ronTile = null) {
     return { winType, baseScore, winTiles, birthdayBonuses, gradeBonuses, groupBonuses };
 }
 
+// 牌库耗尽，游戏结束
+function endGameDeckExhausted() {
+    game.state = GameState.ENDED;
+    showFinalSettlementDeckExhausted();
+}
+
 function endGame(winner, ronTile = null) {
     game.state = GameState.ENDED;
     
@@ -2250,6 +2301,40 @@ function endGame(winner, ronTile = null) {
     
     // 显示终局结算界面
     showFinalSettlement(winner, winType, baseScore, winTiles, birthdayBonuses, gradeBonuses, groupBonuses);
+}
+
+// 显示牌库耗尽的终局结算界面
+function showFinalSettlementDeckExhausted() {
+    const modal = document.getElementById('final-settlement-modal');
+    const winnerNameDiv = document.getElementById('winner-name');
+    const winTypeScoreDiv = document.getElementById('win-type-score');
+    const bonusScoresDiv = document.getElementById('bonus-scores');
+    const totalScoreDiv = document.getElementById('total-score');
+    const winningTilesDiv = document.getElementById('winning-tiles');
+    const closeBtn = document.getElementById('close-settlement');
+    
+    // 设置牌库耗尽信息
+    winnerNameDiv.textContent = '牌库耗尽';
+    
+    // 设置胜利类型和基本分数
+    winTypeScoreDiv.textContent = '游戏结束，无人胡牌';
+    
+    // 隐藏额外分数
+    bonusScoresDiv.style.display = 'none';
+    
+    // 隐藏总分数
+    totalScoreDiv.style.display = 'none';
+    
+    // 清空胜利手牌
+    winningTilesDiv.innerHTML = '';
+    
+    // 显示模态框
+    modal.classList.add('show');
+    
+    // 关闭按钮事件
+    closeBtn.onclick = function() {
+        modal.classList.remove('show');
+    };
 }
 
 // 显示终局结算界面
@@ -2261,6 +2346,10 @@ function showFinalSettlement(winner, winType, baseScore, winTiles, birthdayBonus
     const totalScoreDiv = document.getElementById('total-score');
     const winningTilesDiv = document.getElementById('winning-tiles');
     const closeBtn = document.getElementById('close-settlement');
+    
+    // 确保所有元素都可见
+    bonusScoresDiv.style.display = 'block';
+    totalScoreDiv.style.display = 'block';
     
     // 设置胜利者姓名
     winnerNameDiv.textContent = `${winner.name} 胜利了！`;
@@ -2381,13 +2470,17 @@ function startGame() {
     if (game.deck.length > 0) {
         const drawnTile = game.deck.pop();
         firstPlayer.hand.push(drawnTile);
-        game.lastDrawnTile[game.currentPlayerIndex] = drawnTile; // 记录刚摸到的牌
+        game.lastDrawnTile[game.currentPlayerIndex] = drawnTile;
         
         // 检查是否胜利（只有立直后才能胜利）
         if (game.isRiichi[game.currentPlayerIndex] && checkWin(firstPlayer.hand, game.currentPlayerIndex)) {
             endGame(firstPlayer);
             return;
         }
+    } else {
+        // 牌库耗尽，游戏结束
+        endGameDeckExhausted();
+        return;
     }
     
     // 如果第一个玩家是AI，自动进行游戏
@@ -2441,4 +2534,48 @@ function skipHu() {
 document.addEventListener('DOMContentLoaded', function() {
     // 初始化游戏
     initGame();
+    
+    // 规则按钮点击事件
+    const ruleBtn = document.getElementById('rule-btn');
+    const ruleModal = document.getElementById('rule-modal');
+    const closeRuleBtn = document.getElementById('close-rule');
+    const ruleContent = document.getElementById('rule-content');
+    
+    if (ruleBtn) {
+        ruleBtn.addEventListener('click', function() {
+            // 加载规则文件内容
+            fetch('rule.txt')
+                .then(response => response.text())
+                .then(text => {
+                    // 将Markdown格式转换为HTML
+                    let html = text
+                        .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+                        .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+                        .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+                        .replace(/^\- (.+)$/gm, '<li>$1</li>')
+                        .replace(/\*\*(.+)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n/g, '<br>');
+                    
+                    ruleContent.innerHTML = html;
+                    ruleModal.classList.add('show');
+                })
+                .catch(error => {
+                    ruleContent.innerHTML = '无法加载规则文件：' + error.message;
+                    ruleModal.classList.add('show');
+                });
+        });
+    }
+    
+    if (closeRuleBtn) {
+        closeRuleBtn.addEventListener('click', function() {
+            ruleModal.classList.remove('show');
+        });
+    }
+    
+    // 点击弹窗外部关闭
+    ruleModal.addEventListener('click', function(e) {
+        if (e.target === ruleModal) {
+            ruleModal.classList.remove('show');
+        }
+    });
 });
